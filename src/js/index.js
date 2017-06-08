@@ -11,8 +11,7 @@ const {obj, arr} = require('iblokz-data');
 // sockets
 // const zonar = require('zonar');
 // const zmq = require('zmq');
-let socket = io.connect();
-		
+let socket = window.io.connect();
 
 // app
 const app = require('./util/app');
@@ -45,41 +44,44 @@ const state$ = actions$
 	.map(state => (console.log(state), state))
 	.share();
 
-
-
-
 // state -> ui
 const ui$ = state$.map(state => ui({state, actions}));
 vdom.patchStream(ui$, '#ui');
 
-
 // hooks
-socket.on('connect', function(){
+socket.on('connect', function() {
 	console.log("connected");
-	socket.on('sync', function(message){
-		// console.log(message);
-		// var transposeValue = parseInt(message[3]) / 1000 * 12
-		// $("#pitch-control-transpose").val(transposeValue).change();
-		// $("#x-control").val(parseFloat(message[0])*100).change();
-		// $("#y-control").val(parseFloat(message[1])*100).change();
-	});
+	state$.distinctUntilChanged(state => state.username)
+		.filter(state => state.username !== null)
+		.subscribe(
+			({username}) => socket.emit('join', username)
+		);
+
+	state$.distinctUntilChanged(state => state.messages)
+		.filter(state => state.messages.length > 0 && state.messages.slice(-1).pop().username === state.username)
+		.map(state => state.messages.slice(-1).pop())
+		.subscribe(message => socket.emit('message', message));
+
+	socket.on('joinSuccess', res => actions.joinSuccess(res));
+	socket.on('joined', res => actions.joined(res));
+	socket.on('message', res => actions.message(res));
 });
 
 state$.distinctUntilChanged(state => state.mode)
 	.subscribe(state => {
 		let z;
-		switch(state.mode) {
+		switch (state.mode) {
 			case 'server':
 				actions.set('msg', '\nServer mode');
 				// actions.append('msg', '\nError: ' + JSON.stringify(err));
-			break;
+				break;
 			case 'client':
 				actions.set('msg', '\nClient mode');
-				
-			break;
+
+				break;
 			default:
 			case 'idle':
 				actions.set('msg', '\nIdling ....');
-			break;
+				break;
 		}
-	})
+	});
