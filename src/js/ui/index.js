@@ -34,7 +34,7 @@ module.exports = ({state, actions}) => div('#ui', [].concat(
 					div('.msg', [
 						span('.name', msg.username),
 						span(': '),
-						span('.text', msg.message)
+						span('.text', JSON.stringify(msg.message))
 					])
 				)
 			),
